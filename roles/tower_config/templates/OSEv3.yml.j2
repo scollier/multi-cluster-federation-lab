@@ -1,0 +1,55 @@
+---
+openshift_deployment_type: openshift-enterprise
+openshift_release: "{{ openshift_deploy_version | string }}"
+osm_use_cockpit: no
+openshift_master_default_subdomain: apps-{{ student_id }}.{{ domain_name }}
+openshift_master_identity_providers:
+- name: htpasswd_auth
+  login: True
+  challenge: True
+  kind: HTPasswdPasswordIdentityProvider
+openshift_master_htpasswd_users:
+  {{ student_id }}: {{ ocp_htpasswd }}
+  {{ student_id }}-admin: {{ ocp_htpasswd }}
+openshift_master_image_policy_config:
+  maxImagesBulkImportedPerRepository: 100
+openshift_metrics_install_metrics: yes
+os_sdn_network_plugin_name: redhat/openshift-ovs-multitenant
+osn_storage_plugin_deps: []
+openshift_schedulable: True
+openshift_cloudprovider_kind: aws
+openshift_master_cluster_hostname: "{{ openshift_master_internal_dns_prefix }}-{{ student_id }}.{{ domain_name }}"
+openshift_master_cluster_public_hostname: "{{ openshift_master_dns_prefix }}-{{ student_id }}.{{ domain_name }}"
+openshift_metrics_cassandra_storage_type: dynamic
+openshift_disable_check: memory_availability,disk_availability
+openshift_hosted_prometheus_deploy: true
+openshift_prometheus_namespace: openshift-metrics
+openshift_prometheus_args:
+  - '--storage.tsdb.retention=3d'
+  - '--web.enable-lifecycle'
+openshift_prometheus_additional_rules_file: {{ tower_openshift_prometheus_config_dir }}/prometheus_additional_rule.yml
+openshift_node_open_ports:
+  - service: "Prometheus Node Exporter"
+    port: "9100/tcp"
+ansible_service_broker_local_registry_whitelist:
+  - ".*-apb$"
+{% raw %}
+openshift_cloudprovider_aws_access_key: "{{ lookup('env','AWS_ACCESS_KEY_ID') }}"
+openshift_cloudprovider_aws_secret_key: "{{ lookup('env','AWS_SECRET_ACCESS_KEY') }}"
+openshift_node_group_name: "{{ ec2_tag_node_group }}"
+openshift_prometheus_node_exporter_image_version: "{{ openshift_image_tag }}"
+{% endraw %}
+
+{% if ocp_ssl_enabled is defined and ocp_ssl_enabled %}
+openshift_master_overwrite_named_certificates: true
+openshift_master_named_certificates: [{"certfile": "{{ tower_openshift_letsencrypt_config_dir }}/{{ letsencrypt_crt_filename }}", "keyfile": "{{ tower_openshift_letsencrypt_config_dir }}/{{ letsencrypt_key_filename }}", "cafile": "{{ tower_openshift_letsencrypt_config_dir }}/{{ letsencrypt_ca_filename }}"}]
+openshift_hosted_router_certificate: {"certfile": "{{ tower_openshift_letsencrypt_config_dir }}/{{ letsencrypt_crt_filename }}", "keyfile": "{{ tower_openshift_letsencrypt_config_dir }}/{{ letsencrypt_key_filename }}", "cafile": "{{ tower_openshift_letsencrypt_config_dir }}/{{ letsencrypt_ca_filename }}"}
+{% endif %}
+
+osm_default_node_selector: "node-role.kubernetes.io/compute=true"
+openshift_metrics_cassandra_nodeselector:
+  "node-role.kubernetes.io/infra": "true"
+openshift_metrics_hawkular_nodeselector:
+  "node-role.kubernetes.io/infra": "true"
+openshift_metrics_heapster_nodeselector:
+  "node-role.kubernetes.io/infra": "true"
